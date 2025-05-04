@@ -70,7 +70,8 @@ from Courses import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 import language_tool_python
-tool = language_tool_python.LanguageTool('en-US')
+tool = language_tool_python.LanguageToolPublicAPI('en-US')
+
 
 
 def skill_match_section(resume_skills):
