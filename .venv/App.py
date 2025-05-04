@@ -697,7 +697,7 @@ def run():
                 )
             )
         connection.commit()
-    else:  # This is the corrected Admin section
+    else:
         st.subheader("👨‍💼 Admin Dashboard")
 
         # Input fields
