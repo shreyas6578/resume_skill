@@ -20,6 +20,7 @@ from rapidfuzz import fuzz
 
 # ========== NLTK Setup & NLP Tools ==========
 import nltk
+nltk.download('stopwords')
 from nltk.tokenize import word_tokenize
 from nltk.tag import pos_tag, PerceptronTagger
 from nltk.corpus import stopwords, wordnet
