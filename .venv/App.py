@@ -75,13 +75,11 @@ from Courses import (
 # ========== Configure Logging ==========
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-import language_tool_python
-
 try:
-    tool = language_tool_python.LanguageToolPublicAPI('en-US')  # No Java required
-except Exception as e:
-    st.error(f"LanguageTool API error: {e}")
-
+    tool = language_tool_python.LanguageToolPublicAPI('en-US')
+except language_tool_python.api_request.ApiRequestException as e:
+    st.error("⚠️ LanguageTool API error: You have exceeded the rate limit for the free LanguageTool API. Please try again later.")
+    tool = None  # So later code doesn't break
 
 
 def skill_match_section(resume_skills):
