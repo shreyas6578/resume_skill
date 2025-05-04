@@ -1,0 +1,14 @@
+google-generativeai
+language-tool-python
+matplotlib
+nltk
+numpy>=1.23
+pandas>=1.4.0
+pdfminer.six
+pymysql
+requests
+streamlit
+streamlit-tags
+textstat
+rapidfuzz
+
