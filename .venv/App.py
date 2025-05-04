@@ -12,6 +12,7 @@ import zipfile
 import datetime
 from html import escape
 import urllib.request
+import tempfile
 
 # ========== Data Processing & Analysis ==========
 import numpy as np
@@ -20,6 +21,12 @@ from rapidfuzz import fuzz
 
 # ========== NLTK Setup & NLP Tools ==========
 import nltk
+from nltk.corpus import stopwords
+
+try:
+    stopwords.words('english')
+except LookupError:
+    nltk.download('stopwords')
 from nltk.tokenize import word_tokenize
 from nltk.tag import pos_tag, PerceptronTagger
 from nltk.corpus import stopwords, wordnet
@@ -70,7 +77,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 import language_tool_python
 
-tool = language_tool_python.LanguageTool('en-US')
+try:
+    tool = language_tool_python.LanguageToolPublicAPI('en-US')  # No Java required
+except Exception as e:
+    st.error(f"LanguageTool API error: {e}")
+
 
 
 def skill_match_section(resume_skills):
