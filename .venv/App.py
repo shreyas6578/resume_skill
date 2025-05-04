@@ -72,7 +72,7 @@ logger = logging.getLogger(__name__)
 import language_tool_python
 tool = language_tool_python.LanguageToolPublicAPI('en-US')
 
-
+import tempfile
 
 def skill_match_section(resume_skills):
     st.subheader("🔗 Skill–Job Matching")
@@ -445,14 +445,14 @@ def run():
         pdf_file = st.file_uploader("Upload PDF Resume", type=["pdf"] )
         
         if pdf_file:
-            with st.spinner("Processing..."):
-                time.sleep(1)
-            save_path = os.path.join('Uploaded_Resumes', pdf_file.name)
-            with open(save_path, 'wb') as f:
-                f.write(pdf_file.getbuffer())
-            
-            show_pdf(save_path)
-            resume_data = ResumeParser(save_path).get_extracted_data()
+        with st.spinner("Processing..."):
+        file_data = pdf_file.read()  # Read the PDF binary content
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+            tmp_file.write(file_data)
+            save_path = tmp_file.name
+
+          st.success(f"File temporarily saved at: {save_path}")
             
             if resume_data:
                 # 1) Text extraction
