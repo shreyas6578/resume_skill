@@ -712,89 +712,91 @@ def run():
         if st.button('Login'):
             st.session_state['login_clicked'] = True
 
-# Only validate after button is clicked
-if st.session_state['login_clicked']:
-    if user == 'admin' and pwd == 'admin':
-        df = pd.read_sql("SELECT * FROM user_data;", connection)
+        # Only validate after button is clicked
+        if st.session_state['login_clicked']:
+            if user == 'admin' and pwd == 'admin':
+                df = pd.read_sql("SELECT * FROM user_data;", connection)
 
-        # Decode bytes columns
-        df = df.applymap(lambda x: x.decode('utf-8', errors='ignore')
-        if isinstance(x, (bytes, bytearray)) else x)
+                # Decode bytes columns
+                df = df.applymap(lambda x: x.decode('utf-8', errors='ignore')
+                if isinstance(x, (bytes, bytearray)) else x)
 
-        st.subheader("📊 User Data")
-        st.dataframe(df)
-        st.markdown(get_table_download_link(df, 'report.csv', 'Download CSV'),
-                    unsafe_allow_html=True)
+                st.subheader("📊 User Data")
+                st.dataframe(df)
+                st.markdown(get_table_download_link(df, 'report.csv', 'Download CSV'),
+                            unsafe_allow_html=True)
 
-        # Basic Metrics
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Users", len(df))
+                # Basic Metrics
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Total Users", len(df))
 
-        # Most Common Field with fallback
-        most_common_field = 'N/A'
-        if 'Predicted_Field' in df.columns and not df['Predicted_Field'].empty:
-            most_common_field = df['Predicted_Field'].mode()[0] if not df['Predicted_Field'].mode().empty else 'N/A'
-        col2.metric("Most Common Field", most_common_field)
+                # Most Common Field with fallback
+                most_common_field = 'N/A'
+                if 'Predicted_Field' in df.columns and not df['Predicted_Field'].empty:
+                    most_common_field = df['Predicted_Field'].mode()[0] if not df[
+                        'Predicted_Field'].mode().empty else 'N/A'
+                col2.metric("Most Common Field", most_common_field)
 
-        # User Level Metrics with numerical conversion
-        level_mapping = {'Fresher': 1, 'Intermediate': 2, 'Experienced': 3}
-        avg_level = 'N/A'
-        common_level = 'N/A'
+                # User Level Metrics with numerical conversion
+                level_mapping = {'Fresher': 1, 'Intermediate': 2, 'Experienced': 3}
+                avg_level = 'N/A'
+                common_level = 'N/A'
 
-        if 'User_level' in df.columns:
-            try:
-                df['Level_Score'] = df['User_level'].map(level_mapping)
-                avg_level = f"{df['Level_Score'].mean():.1f}/3" if not df['Level_Score'].empty else 'N/A'
-                common_level = df['User_level'].mode()[0] if not df['User_level'].mode().empty else 'N/A'
-            except Exception as e:
-                st.error(f"Error processing levels: {str(e)}")
-
-        col3.metric("Avg User Level", avg_level, f"Most common: {common_level}")
-
-        # Visualization Section
-        st.subheader("📈 Data Visualizations")
-
-        # Pie Charts with existence checks
-        if 'Predicted_Field' in df.columns:
-            c1, c2 = st.columns(2)
-            with c1:
-                st.plotly_chart(px.pie(df, names='Predicted_Field',
-                                       title='Field Distribution'))
-            with c2:
                 if 'User_level' in df.columns:
-                    st.plotly_chart(px.pie(df, names='User_level',
-                                           title='User Levels'))
+                    try:
+                        df['Level_Score'] = df['User_level'].map(level_mapping)
+                        avg_level = f"{df['Level_Score'].mean():.1f}/3" if not df['Level_Score'].empty else 'N/A'
+                        common_level = df['User_level'].mode()[0] if not df['User_level'].mode().empty else 'N/A'
+                    except Exception as e:
+                        st.error(f"Error processing levels: {str(e)}")
 
-        # Enhanced Bar Chart with safety checks
-        if 'Predicted_Field' in df.columns and 'User_level' in df.columns:
-            st.plotly_chart(px.bar(df, x='Predicted_Field',
-                                   color='User_level',
-                                   title='Field Distribution by User Level',
-                                   labels={'User_level': 'Experience Level'}))
+                col3.metric("Avg User Level", avg_level, f"Most common: {common_level}")
 
-        # Time Series with proper datetime handling
-        if 'Timestamp' in df.columns:
-            try:
-                df['Timestamp'] = df['Timestamp'].str.replace('_', ' ').pipe(pd.to_datetime)
-                time_series = df.set_index('Timestamp').resample('D').size()
-                st.plotly_chart(px.line(time_series,
-                                        title='Daily User Registrations',
-                                        labels={'value': 'Registrations'}))
-            except Exception as e:
-                st.error(f"Error processing timestamps: {str(e)}")
+                # Visualization Section
+                st.subheader("📈 Data Visualizations")
 
-        # Correlation Heatmap with numerical checks
-        numerical_cols = df.select_dtypes(include=np.number).columns.tolist()
-        numerical_cols = list(dict.fromkeys(numerical_cols))
+                # Pie Charts with existence checks
+                if 'Predicted_Field' in df.columns:
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.plotly_chart(px.pie(df, names='Predicted_Field',
+                                               title='Field Distribution'))
+                    with c2:
+                        if 'User_level' in df.columns:
+                            st.plotly_chart(px.pie(df, names='User_level',
+                                                   title='User Levels'))
 
-        if len(numerical_cols) > 1:
-            st.plotly_chart(px.imshow(df[numerical_cols].corr(),
-                                      title='Feature Correlation Heatmap',
-                                      labels=dict(x="Features", y="Features", color="Correlation")))
-        else:
-            st.warning("Insufficient numerical data for correlation heatmap")
-    else:
-        st.error("Invalid credentials")
+                # Enhanced Bar Chart with safety checks
+                if 'Predicted_Field' in df.columns and 'User_level' in df.columns:
+                    st.plotly_chart(px.bar(df, x='Predicted_Field',
+                                           color='User_level',
+                                           title='Field Distribution by User Level',
+                                           labels={'User_level': 'Experience Level'}))
+
+                # Time Series with proper datetime handling
+                if 'Timestamp' in df.columns:
+                    try:
+                        df['Timestamp'] = df['Timestamp'].str.replace('_', ' ').pipe(pd.to_datetime)
+                        time_series = df.set_index('Timestamp').resample('D').size()
+                        st.plotly_chart(px.line(time_series,
+                                                title='Daily User Registrations',
+                                                labels={'value': 'Registrations'}))
+                    except Exception as e:
+                        st.error(f"Error processing timestamps: {str(e)}")
+
+                # Correlation Heatmap with numerical checks
+                numerical_cols = df.select_dtypes(include=np.number).columns.tolist()
+                numerical_cols = list(dict.fromkeys(numerical_cols))
+
+                if len(numerical_cols) > 1:
+                    st.plotly_chart(px.imshow(df[numerical_cols].corr(),
+                                              title='Feature Correlation Heatmap',
+                                              labels=dict(x="Features", y="Features", color="Correlation")))
+                else:
+                    st.warning("Insufficient numerical data for correlation heatmap")
+            else:
+                st.error("Invalid credentials")
+
 
 if __name__ == '__main__':
     run()
