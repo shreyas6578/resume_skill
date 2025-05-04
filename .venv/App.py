@@ -458,13 +458,21 @@ def run():
 
         if pdf_file:
             with st.spinner("Processing..."):
-             file_data = pdf_file.read()  # Read the PDF binary content
+                try:
+                    # Save uploaded file to temp
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+                        tmp_file.write(pdf_file.read())
+                        save_path = tmp_file.name
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-            tmp_file.write(file_data)
-            save_path = tmp_file.name
+                    # Parse resume
+                    resume_data = ResumeParser(save_path).get_extracted_data()
+                    if not resume_data:
+                        st.error("❗ Failed to parse resume content")
+                        st.stop()
 
-        st.success(f"File temporarily saved at: {save_path}")
+                except Exception as e:
+                    st.error(f"❌ Error processing resume: {str(e)}")
+                    st.stop()
 
         if resume_data:
             # 1) Text extraction
@@ -674,36 +682,35 @@ def run():
             cover_letter_generator(resume_data)
 
             # 6) Persist data
-            timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "INSERT INTO user_data "
-                    "(Name,Email_ID,resume_score,Timestamp,Page_no,Predicted_Field,User_level,Actual_skills,Recommended_skills,"
-                    "Recommended_courses) "
-                    "VALUES (" +
-                    "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                    (
-                        resume_data.get('name', ''), resume_data.get('email', ''), str(pct),
-                        timestamp, str(pages), reco_field, level,
-                        str(skills), str(rec_skills), str(rec_course)
-                    )
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO user_data "
+                "(Name,Email_ID,resume_score,Timestamp,Page_no,Predicted_Field,User_level,Actual_skills,Recommended_skills,"
+                "Recommended_courses) "
+                "VALUES (" +
+                "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (
+                    resume_data.get('name', ''), resume_data.get('email', ''), str(pct),
+                    timestamp, str(pages), reco_field, level,
+                    str(skills), str(rec_skills), str(rec_course)
                 )
-            connection.commit()
+            )
+        connection.commit()
+    else:  # This is the corrected Admin section
+        st.subheader("👨‍💼 Admin Dashboard")
 
-else:
-st.subheader("👨‍💼 Admin Dashboard")
+        # Input fields
+        user = st.text_input("Username")
+        pwd = st.text_input("Password", type='password')
 
-# Input fields
-user = st.text_input("Username")
-pwd = st.text_input("Password", type='password')
+        # Add button click state tracker
+        if 'login_clicked' not in st.session_state:
+            st.session_state['login_clicked'] = False
 
-# Add button click state tracker
-if 'login_clicked' not in st.session_state:
-    st.session_state['login_clicked'] = False
-
-# Check button click
-if st.button('Login'):
-    st.session_state['login_clicked'] = True
+        # Check button click
+        if st.button('Login'):
+            st.session_state['login_clicked'] = True
 
 # Only validate after button is clicked
 if st.session_state['login_clicked']:
