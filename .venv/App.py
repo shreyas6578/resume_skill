@@ -473,7 +473,8 @@ def run():
                 except Exception as e:
                     st.error(f"❌ Error processing resume: {str(e)}")
                     st.stop()
-
+        show_pdf(save_path)
+        resume_data = ResumeParser(save_path).get_extracted_data()
         if resume_data:
             # 1) Text extraction
             raw = pdf_reader(save_path)
