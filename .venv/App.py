@@ -20,8 +20,6 @@ from rapidfuzz import fuzz
 
 # ========== NLTK Setup & NLP Tools ==========
 import nltk
-
-nltk.download('stopwords')
 from nltk.tokenize import word_tokenize
 from nltk.tag import pos_tag, PerceptronTagger
 from nltk.corpus import stopwords, wordnet
@@ -72,9 +70,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 import language_tool_python
 
-tool = language_tool_python.LanguageToolPublicAPI('en-US')
-
-import tempfile
+tool = language_tool_python.LanguageTool('en-US')
 
 
 def skill_match_section(resume_skills):
@@ -447,6 +443,8 @@ st.set_page_config(page_title="AI Resume Analyzer", page_icon='./Logo/logo2.png'
 
 def run():
     # Header
+    img = Image.open('./Logo/logo2.png')
+    st.image(img)
     st.title("AI Resume Analyzer")
 
     # Sidebar choice
@@ -473,231 +471,234 @@ def run():
                 except Exception as e:
                     st.error(f"❌ Error processing resume: {str(e)}")
                     st.stop()
-        show_pdf(save_path)
-        resume_data = ResumeParser(save_path).get_extracted_data()
-        if resume_data:
-            # 1) Text extraction
-            raw = pdf_reader(save_path)
-            if not raw:
-                st.error("❗ Could not extract text from PDF.")
-                st.stop()
-            resume_text = raw.lower()
 
-            # 2) Grammar & Readability
-            st.subheader("📘 Grammar & Readability Suggestions")
+            show_pdf(save_path)
+            resume_data = ResumeParser(save_path).get_extracted_data()
 
-            # Compute and show raw readability scores
-            readability_scores = compute_readability(raw)
-            st.json(readability_scores)
+            if resume_data:
+                # 1) Text extraction
+                raw = pdf_reader(save_path)
+                if not raw:
+                    st.error("❗ Could not extract text from PDF.")
+                    st.stop()
+                resume_text = raw.lower()
 
-            # Show interpretations below the scores
-            st.markdown("**📖 Readability Interpretations:**")
-            for metric, score in readability_scores.items():
-                interpretation = interpret_score(metric, score)
-                st.markdown(f"- **{metric}**: {score:.2f} → _{interpretation}_")
+                # 2) Grammar & Readability
+                st.subheader("📘 Grammar & Readability Suggestions")
 
-            # Grammar Suggestions
-            st.markdown("**🔍 Grammar Suggestions:**")
-            suggestions = grammar_and_spelling_suggestions(raw)
-            if suggestions:
-                st.markdown(highlight_issues(raw, suggestions), unsafe_allow_html=True)
-            else:
-                st.success("✅ No grammar issues found!")
+                # Compute and show raw readability scores
+                readability_scores = compute_readability(raw)
+                st.json(readability_scores)
 
-            # 3) Basic Info & Level
-            st.header("**Resume Analysis**")
-            st.success(f"Hello {resume_data.get('name', 'Candidate')}!")
-            st.text(f"Email: {resume_data.get('email', 'N/A')}")
-            st.text(f"Contact: {resume_data.get('mobile_number', 'N/A')}")
-            pages = resume_data.get('no_of_pages', 1)
-            if pages == 1:
-                level, color = 'Fresher', '#d73b5c'
-            elif pages == 2:
-                level, color = 'Intermediate', '#1ed760'
-            else:
-                level, color = 'Experienced', '#fba171'
-            st.markdown(f"<h4 style='color:{color};'>You are at {level} level</h4>", unsafe_allow_html=True)
+                # Show interpretations below the scores
+                st.markdown("**📖 Readability Interpretations:**")
+                for metric, score in readability_scores.items():
+                    interpretation = interpret_score(metric, score)
+                    st.markdown(f"- **{metric}**: {score:.2f} → _{interpretation}_")
 
-            # 4) Skill Tags & Recommendations
-            skills = resume_data.get('skills', [])
-
-            st_tags(label='### Your Skills', text='Edit if needed', value=skills, key='skills')
-            skill_match_section(st.session_state['skills'])
-            # determine field
-            ds_kw = ['tensorflow', 'keras', 'pytorch', 'flask', 'streamlit']
-            ml_kw = ['machine learning', 'ml', 'scikit-learn', 'xgboost', 'lightgbm']
-            web_kw = ['react', 'django', 'node js', 'javascript', 'vue', 'angular']
-            fullstack_kw = ['react', 'node js', 'django', 'flask', 'vue', 'angular']
-            android_kw = ['android', 'flutter', 'kotlin']
-            ios_kw = ['ios', 'swift', 'xcode']
-            uiux_kw = ['ux', 'ui', 'figma', 'adobe xd', 'sketch']
-            devops_kw = ['docker', 'kubernetes', 'jenkins', 'ansible', 'terraform', 'ci/cd']
-            qa_kw = ['selenium', 'pytest', 'cucumber', 'jmeter', 'postman', 'robot framework']
-            dataeng_kw = ['spark', 'hadoop', 'airflow', 'etl', 'kafka']
-            cloud_kw = ['aws', 'azure', 'gcp', 'lambda', 'ec2', 'cloud']
-            biz_analytics_kw = ['excel', 'power bi', 'tableau', 'qlik', 'power query', 'sap bi']
-            cybersec_kw = ['cybersecurity', 'penetration testing', 'nmap', 'wireshark', 'kali', 'metasploit']
-            blockchain_kw = ['blockchain', 'solidity', 'ethereum', 'smart contract', 'web3']
-            game_dev_kw = ['unity', 'unreal', 'game engine', 'cocos2d', 'godot']
-            embedded_kw = ['embedded', 'rtos', 'microcontroller', 'arduino', 'raspberry pi']
-            network_kw = ['cisco', 'ccna', 'network', 'router', 'switch', 'tcp/ip']
-            pm_kw = ['product management', 'roadmap', 'jira', 'confluence', 'agile', 'scrum']
-
-            reco_field, rec_skills, rec_course = '', [], []
-            for s in skills:
-                sl = s.lower()
-                if sl in ml_kw:
-                    reco_field = 'Machine Learning Engineering'
-                    rec_skills = ['Scikit‑learn', 'TensorFlow', 'XGBoost']
-                    rec_course = ml_course
-                    break
-                if sl in ds_kw:
-                    reco_field = 'Data Science'
-                    rec_skills = ['Pandas', 'NumPy', 'Scikit‑learn']
-                    rec_course = ds_course
-                    break
-                if sl in fullstack_kw:
-                    reco_field = 'Full‑Stack Development'
-                    rec_skills = ['React', 'Node.js', 'Django']
-                    rec_course = fullstack_course
-                    break
-                if sl in web_kw:
-                    reco_field = 'Web Development'
-                    rec_skills = ['React', 'Node.js']
-                    rec_course = web_course
-                    break
-                if sl in android_kw:
-                    reco_field = 'Android Development'
-                    rec_skills = ['Kotlin', 'Jetpack']
-                    rec_course = android_course
-                    break
-                if sl in ios_kw:
-                    reco_field = 'iOS Development'
-                    rec_skills = ['SwiftUI', 'Combine']
-                    rec_course = ios_course
-                    break
-                if sl in uiux_kw:
-                    reco_field = 'UI/UX Design'
-                    rec_skills = ['Figma', 'Prototyping']
-                    rec_course = uiux_course
-                    break
-                if sl in devops_kw:
-                    reco_field = 'DevOps Engineering'
-                    rec_skills = ['Docker', 'Kubernetes', 'CI/CD']
-                    rec_course = devops_course
-                    break
-                if sl in qa_kw:
-                    reco_field = 'QA Automation'
-                    rec_skills = ['Selenium', 'pytest', 'Postman']
-                    rec_course = qa_course
-                    break
-                if sl in dataeng_kw:
-                    reco_field = 'Data Engineering'
-                    rec_skills = ['Apache Spark', 'Airflow', 'ETL']
-                    rec_course = dataeng_course
-                    break
-                if sl in cloud_kw:
-                    reco_field = 'Cloud Engineering'
-                    rec_skills = ['AWS EC2', 'Azure Functions', 'GCP Compute']
-                    rec_course = cloud_course
-                    break
-                if sl in biz_analytics_kw:
-                    reco_field = 'Business Analytics'
-                    rec_skills = ['Tableau', 'Power BI', 'Excel']
-                    rec_course = biz_analytics_course
-                    break
-                if sl in cybersec_kw:
-                    reco_field = 'Cybersecurity'
-                    rec_skills = ['Nmap', 'Wireshark', 'Pen Testing']
-                    rec_course = cybersec_course
-                    break
-                if sl in blockchain_kw:
-                    reco_field = 'Blockchain Development'
-                    rec_skills = ['Solidity', 'Ethereum', 'Smart Contracts']
-                    rec_course = blockchain_course
-                    break
-                if sl in game_dev_kw:
-                    reco_field = 'Game Development'
-                    rec_skills = ['Unity', 'Unreal Engine', 'C#']
-                    rec_course = game_dev_course
-                    break
-                if sl in embedded_kw:
-                    reco_field = 'Embedded Systems'
-                    rec_skills = ['C', 'RTOS', 'Microcontrollers']
-                    rec_course = embedded_course
-                    break
-                if sl in network_kw:
-                    reco_field = 'Network Engineering'
-                    rec_skills = ['Cisco IOS', 'TCP/IP', 'Routing & Switching']
-                    rec_course = network_course
-                    break
-                if sl in pm_kw:
-                    reco_field = 'Product Management'
-                    rec_skills = ['Roadmapping', 'Scrum', 'JIRA']
-                    rec_course = pm_course
-                    break
-
-            if reco_field:
-                st.success(f"📌 Detected field: {reco_field}")
-                st_tags(label='Recommended Skills', text='Add these', value=rec_skills, key='reco')
-                rec_course = course_recommender(rec_course)
-
-            # 5) Advanced Resume Tips & Strength Meter
-            st.subheader("🎯 Advanced Resume Tips & Suggestions")
-            sections = {
-                "Objective": {"keywords": ["objective"], "score": 15},
-                "Achievements": {"keywords": ["achievements"], "score": 15},
-                "Projects": {"keywords": ["projects"], "score": 15},
-                "Skills": {"keywords": ["skills"], "score": 10},
-                "Education": {"keywords": ["education"], "score": 10},
-                "Experience": {"keywords": ["experience"], "score": 10},
-                "Certifications": {"keywords": ["certifications"], "score": 10},
-                "Contact Info": {"keywords": ["email", "phone"], "score": 5},
-            }
-            total, max_s = 0, sum(v['score'] for v in sections.values())
-            for name, info in sections.items():
-                found = any(k in resume_text for k in info['keywords'])
-                if found:
-                    total += info['score']
-                    st.markdown(f"<span style='color:#1ed760;'>✅ {name}</span>", unsafe_allow_html=True)
+                # Grammar Suggestions
+                st.markdown("**🔍 Grammar Suggestions:**")
+                suggestions = grammar_and_spelling_suggestions(raw)
+                if suggestions:
+                    st.markdown(highlight_issues(raw, suggestions), unsafe_allow_html=True)
                 else:
-                    st.markdown(f"<span style='color:#ff4b4b;'>⚠️ {name}</span>", unsafe_allow_html=True)
-            pct = int((total / max_s) * 100)
-            st.subheader("📊 Resume Strength Meter")
-            st.markdown("""
+                    st.success("✅ No grammar issues found!")
+
+                # 3) Basic Info & Level
+                st.header("**Resume Analysis**")
+                st.success(f"Hello {resume_data.get('name', 'Candidate')}!")
+                st.text(f"Email: {resume_data.get('email', 'N/A')}")
+                st.text(f"Contact: {resume_data.get('mobile_number', 'N/A')}")
+                pages = resume_data.get('no_of_pages', 1)
+                if pages == 1:
+                    level, color = 'Fresher', '#d73b5c'
+                elif pages == 2:
+                    level, color = 'Intermediate', '#1ed760'
+                else:
+                    level, color = 'Experienced', '#fba171'
+                st.markdown(f"<h4 style='color:{color};'>You are at {level} level</h4>", unsafe_allow_html=True)
+
+                # 4) Skill Tags & Recommendations
+                skills = resume_data.get('skills', [])
+
+                st_tags(label='### Your Skills', text='Edit if needed', value=skills, key='skills')
+                skill_match_section(st.session_state['skills'])
+                # determine field
+                ds_kw = ['tensorflow', 'keras', 'pytorch', 'flask', 'streamlit']
+                ml_kw = ['machine learning', 'ml', 'scikit-learn', 'xgboost', 'lightgbm']
+                web_kw = ['react', 'django', 'node js', 'javascript', 'vue', 'angular']
+                fullstack_kw = ['react', 'node js', 'django', 'flask', 'vue', 'angular']
+                android_kw = ['android', 'flutter', 'kotlin']
+                ios_kw = ['ios', 'swift', 'xcode']
+                uiux_kw = ['ux', 'ui', 'figma', 'adobe xd', 'sketch']
+                devops_kw = ['docker', 'kubernetes', 'jenkins', 'ansible', 'terraform', 'ci/cd']
+                qa_kw = ['selenium', 'pytest', 'cucumber', 'jmeter', 'postman', 'robot framework']
+                dataeng_kw = ['spark', 'hadoop', 'airflow', 'etl', 'kafka']
+                cloud_kw = ['aws', 'azure', 'gcp', 'lambda', 'ec2', 'cloud']
+                biz_analytics_kw = ['excel', 'power bi', 'tableau', 'qlik', 'power query', 'sap bi']
+                cybersec_kw = ['cybersecurity', 'penetration testing', 'nmap', 'wireshark', 'kali', 'metasploit']
+                blockchain_kw = ['blockchain', 'solidity', 'ethereum', 'smart contract', 'web3']
+                game_dev_kw = ['unity', 'unreal', 'game engine', 'cocos2d', 'godot']
+                embedded_kw = ['embedded', 'rtos', 'microcontroller', 'arduino', 'raspberry pi']
+                network_kw = ['cisco', 'ccna', 'network', 'router', 'switch', 'tcp/ip']
+                pm_kw = ['product management', 'roadmap', 'jira', 'confluence', 'agile', 'scrum']
+
+                reco_field, rec_skills, rec_course = '', [], []
+                for s in skills:
+                    sl = s.lower()
+                    if sl in ml_kw:
+                        reco_field = 'Machine Learning Engineering'
+                        rec_skills = ['Scikit‑learn', 'TensorFlow', 'XGBoost']
+                        rec_course = ml_course
+                        break
+                    if sl in ds_kw:
+                        reco_field = 'Data Science'
+                        rec_skills = ['Pandas', 'NumPy', 'Scikit‑learn']
+                        rec_course = ds_course
+                        break
+                    if sl in fullstack_kw:
+                        reco_field = 'Full‑Stack Development'
+                        rec_skills = ['React', 'Node.js', 'Django']
+                        rec_course = fullstack_course
+                        break
+                    if sl in web_kw:
+                        reco_field = 'Web Development'
+                        rec_skills = ['React', 'Node.js']
+                        rec_course = web_course
+                        break
+                    if sl in android_kw:
+                        reco_field = 'Android Development'
+                        rec_skills = ['Kotlin', 'Jetpack']
+                        rec_course = android_course
+                        break
+                    if sl in ios_kw:
+                        reco_field = 'iOS Development'
+                        rec_skills = ['SwiftUI', 'Combine']
+                        rec_course = ios_course
+                        break
+                    if sl in uiux_kw:
+                        reco_field = 'UI/UX Design'
+                        rec_skills = ['Figma', 'Prototyping']
+                        rec_course = uiux_course
+                        break
+                    if sl in devops_kw:
+                        reco_field = 'DevOps Engineering'
+                        rec_skills = ['Docker', 'Kubernetes', 'CI/CD']
+                        rec_course = devops_course
+                        break
+                    if sl in qa_kw:
+                        reco_field = 'QA Automation'
+                        rec_skills = ['Selenium', 'pytest', 'Postman']
+                        rec_course = qa_course
+                        break
+                    if sl in dataeng_kw:
+                        reco_field = 'Data Engineering'
+                        rec_skills = ['Apache Spark', 'Airflow', 'ETL']
+                        rec_course = dataeng_course
+                        break
+                    if sl in cloud_kw:
+                        reco_field = 'Cloud Engineering'
+                        rec_skills = ['AWS EC2', 'Azure Functions', 'GCP Compute']
+                        rec_course = cloud_course
+                        break
+                    if sl in biz_analytics_kw:
+                        reco_field = 'Business Analytics'
+                        rec_skills = ['Tableau', 'Power BI', 'Excel']
+                        rec_course = biz_analytics_course
+                        break
+                    if sl in cybersec_kw:
+                        reco_field = 'Cybersecurity'
+                        rec_skills = ['Nmap', 'Wireshark', 'Pen Testing']
+                        rec_course = cybersec_course
+                        break
+                    if sl in blockchain_kw:
+                        reco_field = 'Blockchain Development'
+                        rec_skills = ['Solidity', 'Ethereum', 'Smart Contracts']
+                        rec_course = blockchain_course
+                        break
+                    if sl in game_dev_kw:
+                        reco_field = 'Game Development'
+                        rec_skills = ['Unity', 'Unreal Engine', 'C#']
+                        rec_course = game_dev_course
+                        break
+                    if sl in embedded_kw:
+                        reco_field = 'Embedded Systems'
+                        rec_skills = ['C', 'RTOS', 'Microcontrollers']
+                        rec_course = embedded_course
+                        break
+                    if sl in network_kw:
+                        reco_field = 'Network Engineering'
+                        rec_skills = ['Cisco IOS', 'TCP/IP', 'Routing & Switching']
+                        rec_course = network_course
+                        break
+                    if sl in pm_kw:
+                        reco_field = 'Product Management'
+                        rec_skills = ['Roadmapping', 'Scrum', 'JIRA']
+                        rec_course = pm_course
+                        break
+
+                if reco_field:
+                    st.success(f"📌 Detected field: {reco_field}")
+                    st_tags(label='Recommended Skills', text='Add these', value=rec_skills, key='reco')
+                    rec_course = course_recommender(rec_course)
+
+                # 5) Advanced Resume Tips & Strength Meter
+                st.subheader("🎯 Advanced Resume Tips & Suggestions")
+                sections = {
+                    "Objective": {"keywords": ["objective"], "score": 15},
+                    "Achievements": {"keywords": ["achievements"], "score": 15},
+                    "Projects": {"keywords": ["projects"], "score": 15},
+                    "Skills": {"keywords": ["skills"], "score": 10},
+                    "Education": {"keywords": ["education"], "score": 10},
+                    "Experience": {"keywords": ["experience"], "score": 10},
+                    "Certifications": {"keywords": ["certifications"], "score": 10},
+                    "Contact Info": {"keywords": ["email", "phone"], "score": 5},
+                }
+                total, max_s = 0, sum(v['score'] for v in sections.values())
+                for name, info in sections.items():
+                    found = any(k in resume_text for k in info['keywords'])
+                    if found:
+                        total += info['score']
+                        st.markdown(f"<span style='color:#1ed760;'>✅ {name}</span>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<span style='color:#ff4b4b;'>⚠️ {name}</span>", unsafe_allow_html=True)
+                pct = int((total / max_s) * 100)
+                st.subheader("📊 Resume Strength Meter")
+                st.markdown("""
                     <style>
                         .stProgress > div > div > div > div {
                             background: linear-gradient(to right, #d73b5c, #f39c12, #27ae60);
                         }
                     </style>""", unsafe_allow_html=True)
-            bar = st.progress(0)
-            for i in range(pct + 1): time.sleep(0.02); bar.progress(i)
-            if pct >= 85:
-                st.success(f"🌟 {pct}/100")
-            elif pct >= 60:
-                st.warning(f"✅ {pct}/100")
-            else:
-                st.error(f"🚧 {pct}/100")
-            st.info("Based on section presence only.")
-            st.markdown("---")
-            cover_letter_generator(resume_data)
+                bar = st.progress(0)
+                for i in range(pct + 1): time.sleep(0.02); bar.progress(i)
+                if pct >= 85:
+                    st.success(f"🌟 {pct}/100")
+                elif pct >= 60:
+                    st.warning(f"✅ {pct}/100")
+                else:
+                    st.error(f"🚧 {pct}/100")
+                st.info("Based on section presence only.")
+                st.markdown("---")
+                cover_letter_generator(resume_data)
 
-            # 6) Persist data
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "INSERT INTO user_data "
-                "(Name,Email_ID,resume_score,Timestamp,Page_no,Predicted_Field,User_level,Actual_skills,Recommended_skills,"
-                "Recommended_courses) "
-                "VALUES (" +
-                "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                (
-                    resume_data.get('name', ''), resume_data.get('email', ''), str(pct),
-                    timestamp, str(pages), reco_field, level,
-                    str(skills), str(rec_skills), str(rec_course)
-                )
-            )
-        connection.commit()
+                # 6) Persist data
+                timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "INSERT INTO user_data "
+                        "(Name,Email_ID,resume_score,Timestamp,Page_no,Predicted_Field,User_level,Actual_skills,Recommended_skills,"
+                        "Recommended_courses) "
+                        "VALUES (" +
+                        "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                        (
+                            resume_data.get('name', ''), resume_data.get('email', ''), str(pct),
+                            timestamp, str(pages), reco_field, level,
+                            str(skills), str(rec_skills), str(rec_course)
+                        )
+                    )
+                connection.commit()
+
     else:
         st.subheader("👨‍💼 Admin Dashboard")
 
